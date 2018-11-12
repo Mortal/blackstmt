@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+
+import argparse
+import re
+import subprocess
+import sys
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--tab-size", "-t", type=int, default=4)
+parser.add_argument("--line-length", "-l", type=int, default=88)
+parser.add_argument("--spaces", "-s", action="store_true")
+
+
+def get_indent(line, args):
+    mo = re.match(r"^([\t ]*)", line)
+    indent = mo.group(1)
+    return args.tab_size * indent.count("\t") + indent.count(" ")
+
+
+def dedent(line, amount, args):
+    extra = get_indent(line, args) - amount
+    if args.spaces:
+        tabs, spaces = 0, extra
+    else:
+        tabs, spaces = divmod(extra, args.tab_size)
+    return "\t" * tabs + " " * spaces + line.lstrip()
+
+
+def main():
+    args = parser.parse_args()
+    code = sys.stdin.read()
+    lines = code.splitlines()
+    indent = min(get_indent(line, args) for line in lines if line.strip())
+    lines_dedent = [
+        dedent(line, indent, args) if line.strip() else "" for line in lines
+    ]
+    code_dedent = "\n".join(lines_dedent) + "\n"
+    fixed_dedent = subprocess.run(
+        ("black", "-l%s" % (args.line_length - indent), "-q", "-"),
+        input=code_dedent,
+        universal_newlines=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    fixed = [dedent(line, -indent, args) for line in fixed_dedent.splitlines()]
+    print("\n".join(fixed))
+
+
+if __name__ == "__main__":
+    main()
