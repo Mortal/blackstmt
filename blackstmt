@@ -19,6 +19,8 @@ def get_indent(line, args):
 
 
 def dedent(line, amount, args):
+    if not line.strip():
+        return ''
     extra = get_indent(line, args) - amount
     if args.spaces:
         tabs, spaces = 0, extra
